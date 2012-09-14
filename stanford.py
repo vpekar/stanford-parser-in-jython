@@ -18,7 +18,7 @@ INSTALLATION:
 
 USAGE: 
 
-1. Produce an FDG-style of a parse (a table as a list of words with tags):
+    Initialize a parser:
 
         parser = StanfordParser()
 
@@ -38,17 +38,8 @@ USAGE:
     
         sentence.print_tree()
     
-2. Retrieve the 5 best parses with associated probabilities for the last-parsed sentence:
-
-    parser = StanfordParser()
-    sentence = parser.parse('This is a test')
-    for candidate_tree in parser.lp.getKBestPCFGParses(5):
-        print 'Prob:', math.e**candidate_tree.score()
-        print 'Tree:'
-        s = Sentence(parser.gsf, candidate_tree.object())
-        s.print_table()
-
 On input, the script accepts unicode or utf8 or latin1.
+
 On output, the script produces unicode. 
 """
 
