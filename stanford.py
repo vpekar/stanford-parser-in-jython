@@ -15,7 +15,7 @@ INSTALLATION:
     2. Unpack into a local dir, put the path to stanford-parser.jar in the -cp arg in jython.bat
     3. Put the path to englishPCFG.ser.gz as parser_file arg to StanfordParser
 
-USAGE:
+USAGE: 
 
 1. Produce an FDG-style of a parse (a table as a list of words with tags):
 
