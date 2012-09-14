@@ -49,7 +49,7 @@ USAGE:
         s.print_table()
 
 On input, the script accepts unicode or utf8 or latin1.
-On output, the script produces unicode.
+On output, the script produces unicode. 
 """
 
 __author__="Viktor Pekar <v.pekar@gmail.com>"
