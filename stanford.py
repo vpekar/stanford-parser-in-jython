@@ -13,14 +13,14 @@ See examples after the if __name__ == "__main__" hooks.
 INSTALLATION:
 
     1. Download the parser from http://nlp.stanford.edu/downloads/lex-parser.shtml
-    2. Unpack into a local dir, put the path to stanford-parser.jar in the -cp arg in jython.bat
+    2. Unpack into a local dir, put the path to stanford-parser.jar into the classpath for jython
     3. Put the path to englishPCFG.ser.gz as parser_file arg to StanfordParser
 
 USAGE: 
 
     Initialize a parser:
 
-        parser = StanfordParser()
+        parser = StanfordParser('englishPCFG.ser.gz')
 
     To keep XML tags provided in the input text:
     
@@ -311,7 +311,7 @@ class StanfordParser:
 
 if __name__ == '__main__':
         
-    sp = StanfordParser(r'C:\soft\stanford\stanford-parser-2008-10-26\englishPCFG.ser.gz')
+    sp = StanfordParser(r'englishPCFG.ser.gz')
     
     print 'Parsing XML text\n'
     s = 'This is an <tag attr="term">example<!-- this is a comment --></tag>.'

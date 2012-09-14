@@ -16,14 +16,14 @@ See examples after the if __ name __ == "__ main __" hooks.
 INSTALLATION:
 
     1. Download the parser from http://nlp.stanford.edu/downloads/lex-parser.shtml
-    2. Unpack into a local dir, put the path to stanford-parser.jar in the -cp arg in jython.bat
-    3. Put the path to englishPCFG.ser.gz as parser_file arg to StanfordParser
+    2. Unpack into a local dir, put the path to stanford-parser.jar into the classpath for jython
+    3. Put the path to englishPCFG.ser.gz as an arg to StanfordParser
 
 USAGE: 
 
     Initialize a parser:
 
-        parser = StanfordParser()
+        parser = StanfordParser('englishPCFG.ser.gz')
 
     To keep XML tags provided in the input text:
     
