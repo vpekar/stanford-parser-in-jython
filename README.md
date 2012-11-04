@@ -1,13 +1,12 @@
 stanford-parser-in-jython
 =========================
 
-A Jython interface to the Stanford parser. Includes various utilities to manipulate
-parsed sentences: 
-* parsing text containing XML tags, 
-* obtaining probabilities for different analyses,
-* extracting dependency relations,
-* extracting subtrees, 
-* finding the shortest path between two nodes, 
+A Jython interface to the Stanford parser (v.2.0.3). Includes various utilities to manipulate parsed sentences: 
+* parse text containing XML tags, 
+* obtain probabilities for different analyses,
+* extract dependency relations,
+* extract subtrees, 
+* find the shortest path between two nodes, 
 * print the parse in various formats.
 
 See examples after the if __ name __ == "__ main __" hooks.
@@ -27,7 +26,7 @@ USAGE:
 
     To keep XML tags provided in the input text:
     
-        sentence = parser.parse('This is a test')
+        sentence = parser.parse('This is a <tag>test</tag>')
     
     To strip all XML before parsing:
     

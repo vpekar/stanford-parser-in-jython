@@ -1,10 +1,10 @@
-"""A Jython interface to the Stanford parser. Includes various utilities to manipulate
-parsed sentences: 
-* parsing text containing XML tags, 
-* obtaining probabilities for different analyses,
-* extracting dependency relations,
-* extracting subtrees, 
-* finding the shortest path between two nodes, 
+"""A Jython interface to the Stanford parser (v.2.0.3). Includes various utilities
+to manipulate parsed sentences: 
+* parse text containing XML tags, 
+* obtain probabilities for different analyses,
+* extract dependency relations,
+* extract subtrees, 
+* find the shortest path between two nodes, 
 * print the parse in various formats.
 
 See examples after the if __name__ == "__main__" hooks.
@@ -14,7 +14,7 @@ INSTALLATION:
 
     1. Download the parser from http://nlp.stanford.edu/downloads/lex-parser.shtml
     2. Unpack into a local dir, put the path to stanford-parser.jar into the classpath for jython
-    3. Put the path to englishPCFG.ser.gz as parser_file arg to StanfordParser
+    3. Put the full path to englishPCFG.ser.gz as parser_file arg to StanfordParser
 
 USAGE: 
 
@@ -24,7 +24,7 @@ USAGE:
 
     To keep XML tags provided in the input text:
     
-        sentence = parser.parse('This is a test')
+        sentence = parser.parse('This is a <tag>test</tag>.')
     
     To strip all XML before parsing:
     
@@ -46,7 +46,7 @@ On output, the script produces unicode.
 __author__="Viktor Pekar <v.pekar@gmail.com>"
 __version__="0.1"
 
-import sys, re, string, math
+import sys, re, os, string, math
 
 try:
     assert 'java' in sys.platform
@@ -57,6 +57,8 @@ from java.util import *
 from edu.stanford.nlp.trees import PennTreebankLanguagePack, TreePrint
 from edu.stanford.nlp.parser.lexparser import LexicalizedParser
 from edu.stanford.nlp.process import Morphology, PTBTokenizer, WordTokenFactory
+from edu.stanford.nlp.parser.lexparser import Options
+from edu.stanford.nlp.ling import Sentence, WordTag
 from java.io import StringReader
 
 
@@ -76,19 +78,19 @@ def stanford2tt(sentence):
         yield (word, tag, lemma)
 
 
-class Sentence:
+class PySentence:
     """An interface to the grammaticalStructure object of SP
     """
     
-    def __init__(self, gsf, parse, xmltags={}):
-        """Create a Sentence object from parse.
+    def __init__(self, parser, parse, xmltags={}):
+        """Create a PySentence object from parse.
         @param gsf: a grammaticalStructureFactory object
         @param parse: a parse of the sentence
         @param xmltags: index of the previous text token => list of intervening xmltags
         """
         self.parse = parse
-        self.gs = gsf.newGrammaticalStructure(parse)
-        self.lemmer = Morphology()
+        self.gs = parser.gsf.newGrammaticalStructure(parse)
+        self.lemmer = parser.lemmer
         self.xmltags = xmltags
         
         # create indices
@@ -119,7 +121,7 @@ class Sentence:
             
             parent = i.parent()
             tag = u'Z' if parent == None else parent.value().decode('latin1')
-            lemma = self.lemmer.lemmatize(self.lemmer.stem(word, tag)).lemma().decode('latin1')
+            lemma = self.lemmer.lemmatize(WordTag(word, tag)).lemma().decode('latin1')
             p = self.gs.getGovernor(i)
             if word in string.punctuation or p == None:
                 p_idx = 0
@@ -151,14 +153,14 @@ class Sentence:
         idx = node.index()
         dep_idx = self.dep.get(idx)
         if not dep_idx: return None, None
-        return (self.node.get(dep_idx), self.rel.get(idx))
+        return self.node.get(dep_idx), self.rel.get(idx)
     
     def get_children(self,node):
         """Yield tuples each with a child of the dependency 
         and the relation label
         """
         for i in self.children.get(node.index(), []):
-            yield (self.node[i], self.rel[i])
+            yield self.node[i], self.rel[i]
     
     def descendants(self,idx):
         """Return all descendants of a node, including the node itself
@@ -194,7 +196,7 @@ class Sentence:
             text = text.replace(' ' + i, i)
         return text
 
-    def least_common_node(self,n,m):
+    def get_least_common_node(self,n,m):
         """Return a node that is least common for two given nodes, 
         as well as the shortest path between the two nodes
         @param n: index of node 1
@@ -239,15 +241,18 @@ class Sentence:
     def print_table(self):
         """Print the parse as a table, FDG-style, to STDOUT
         """
+        def get_index(s):
+            return '-' if '.' in s else s
         for i in sorted(self.word):
             line = '\t'.join([
-                    self.word.get(i,'')
-                    self.lemma.get(i,'')
-                    self.tag.get(i,'')
-                    self.rel.get(i,'')
-                    self.dep.get(i,'')
+                    get_index(unicode(i)),
+                    self.word.get(i,''),
+                    self.lemma.get(i,''),
+                    self.tag.get(i,''),
+                    self.rel.get(i,''),
+                    unicode(self.dep.get(i,'')),
                 ])
-            print line.encode('utf8')
+            print line.encode('latin1')
     
     def print_tree(self, mode='penn'):
         """Prints the parse.
@@ -265,11 +270,28 @@ class StanfordParser:
         """@param parser_file: path to the serialised parser model (e.g. englishPCFG.ser.gz)
         @param parser_options: options
         """
-        self.lp = LexicalizedParser(parser_file)
-        self.lp.setOptionFlags(parser_options)
+        assert os.path.exists(parser_file)
+        options = Options()
+        options.setOptions(parser_options)
+        self.lp = LexicalizedParser.getParserFromFile(parser_file, options)
         tlp = PennTreebankLanguagePack()
         self.gsf = tlp.grammaticalStructureFactory()
-        self.wtf = WordTokenFactory()
+        self.lemmer = Morphology()
+        self.word_token_factory = WordTokenFactory()
+        self.parser_query = None
+
+    def get_most_probable_parses(self, text, kbest=2):
+        """Yield kbest parses of a sentence along with their probabilities.
+        """
+        if not self.parser_query:
+            self.parser_query = self.lp.parserQuery()
+        response = self.parser_query.parse(sp.tokenize(text))
+        if not response:
+            raise Exception("The sentence was not accepted by the parser: %s" % text)
+        for candidate_tree in self.parser_query.getKBestPCFGParses(kbest):
+            s = PySentence(sp, candidate_tree.object())
+            prob = math.e**candidate_tree.score()
+            yield s, prob
 
     def parse(self, s):
         """Strips XML tags first.
@@ -280,110 +302,100 @@ class StanfordParser:
         s = self.TAG.sub('', s)
         
         parse = self.lp.apply(s)
-        return Sentence(self.gsf, parse)
+        return PySentence(self, parse)
         
-    def parse_xml(self,s):
+    def tokenize(self, text):
+        reader = StringReader(text)
+        tokeniser = PTBTokenizer(reader, self.word_token_factory, None)
+        tokens = tokeniser.tokenize()
+        return tokens
+            
+    def parse_xml(self, text):
         """Tokenise the XML text, remember XML positions, and then parse it.
         """
         
-        # tokenise the text
-        r = StringReader(s)
-        tokeniser = PTBTokenizer(r, False, self.wtf)
-        alist = tokeniser.tokenize()
-        
         # build a plain-text token list and remember tag positions
-        tags = {}
+        xml_tags = {}
         sent = []
-        for i in alist:
-            token = str(i)
+        for i in self.tokenize(text):
+            token = unicode(i)
             if token.startswith('<'):
                 cur_size = len(sent)
-                tags[cur_size] = tags.get(cur_size,[])
-                tags[cur_size].append(token)
+                xml_tags[cur_size] = xml_tags.get(cur_size,[])
+                xml_tags[cur_size].append(token)
             else:
                 sent.append(token)
                 
         # parse
-        parse = self.lp.apply(Arrays.asList(sent))
+        parse = self.lp.apply(Sentence.toWordList(sent))
         
-        return Sentence(self.gsf, parse, tags)
+        return PySentence(self, parse, xml_tags)
 
-
-if __name__ == '__main__':
-        
-    sp = StanfordParser(r'englishPCFG.ser.gz')
-    
-    print 'Parsing XML text\n'
-    s = 'This is an <tag attr="term">example<!-- this is a comment --></tag>.'
+def parse_xml_example(sp):
+    print 'Parsing XML text'
+    s = 'The quick brown <tag attr="term">fox<!-- this is a comment --></tag> jumped over the lazy dog.'
     print 'IN:', s
     sentence = sp.parse_xml(s)
     print 'OUT:'
     sentence.print_table()
     print '-'*80
     
-    print 'Output formats\n'
-    s = 'This is an example sentence.'
-    print 'IN:', s
-    sentence = sp.parse_xml(s)
-    print 'TABLE:'
-    sentence.print_table()
-    print '\nTREE:'
-    sentence.print_tree()
-    print '\nTT FORMAT:'
-    for i in stanford2tt(sentence):
-        print i
-    print '-'*80
-    
+def parse_probabilities_example(sp):
     print 'Parse probabilities\n'
-    s = 'I saw a man with a telescope.'
-    print 'IN:', s
-    for candidate_tree in sp.lp.getKBestPCFGParses(1):
-        print 'Probability:', math.e**candidate_tree.score()
+    text = 'I saw a man with a telescope.'
+    print 'IN:', text
+    for s, prob in sp.get_most_probable_parses(text, kbest=2):
+        print 'Probability:', prob
         print 'Tree:'
-        s = Sentence(sp.gsf, candidate_tree.object())
         s.print_table()
         print '-'*50
     print '-'*80
     
-    """
-    print
-    print 'Subtrees:\n'
+def subtrees_example(sp):
+    print 'Subtrees:'
+    text = 'I saw a man with a telescope.'
+    sentence = sp.parse(text)
     for subtree in sentence.parse.subTrees():
         print subtree
         print '-'*50
     print '-'*80
-    """
     
-    print 'Dependencies\n'
+def get_dependencies_example(sp):
+    print 'Dependencies:'
+    text = 'I saw a man with a telescope.'
+    sentence = sp.parse(text)
     for td in sentence.gs.allTypedDependencies():
         gov = td.gov()
         gov_idx = gov.index()
         dep = td.dep()
         dep_idx = dep.index()
         rel = td.reln()
-        print 'Governing word:',gov.value()
-        print 'Its index:',gov_idx
-        print 'Dependency word:',dep.value()
-        print 'Its index:',dep_idx
-        print '-'*50
+        print 'Head: %s (%d); dependent: %s (%d); relation: %s' % (gov.value(), gov_idx, dep.value(), dep_idx, rel)
     print '-'*80
     
-    """
-    # paths between every pair of content words
-    content = []
-    for i in sentence.gs.getNodes():
-        if i.headTagNode() != None: continue
-        idx = i.index()
-        word = i.value()
-        tag = i.parent().value()
-        if tag[0] in ['V','N','J','R']:
-            content.append(i)
-    for i in content:
-        for j in content:
-            if i == j: continue
-            lcn, shortest_path = sentence.least_common_node(i.index(), j.index())
-            print 'LCN: %s and %s: %s' % (i, j, lcn)
-            print 'Path:', shortest_path
-            print '-'*50
-    """
+def get_common_path_example(sp):
+    print 'Common path:'
+    text = 'The quick brown fox jumped over the lazy dog.'
+    print 'Text:', text
+    i = 4
+    j = 9
+    sentence = sp.parse(text)
+    lcn, shortest_path = sentence.get_least_common_node(i, j)
+    print 'Least common node for "%s" and "%s": "%s"' % (sentence.word[i], sentence.word[j], sentence.word[lcn])
+    path = ' '.join([sentence.word[x] for x in sorted(shortest_path)])
+    print 'Path: %s' % path
+    
+    
+if __name__ == '__main__':
+    
+    # full path to parser file, e.g. englishPCFG.ser.gz
+    parser_file = sys.argv[1]
+    sp = StanfordParser(parser_file)
+    
+    parse_xml_example(sp)
+    parse_probabilities_example(sp)
+    subtrees_example(sp)
+    get_dependencies_example(sp)
+    get_common_path_example(sp)
+
     
