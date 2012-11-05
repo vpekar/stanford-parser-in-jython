@@ -285,11 +285,11 @@ class StanfordParser:
         """
         if not self.parser_query:
             self.parser_query = self.lp.parserQuery()
-        response = self.parser_query.parse(sp.tokenize(text))
+        response = self.parser_query.parse(self.tokenize(text))
         if not response:
             raise Exception("The sentence was not accepted by the parser: %s" % text)
         for candidate_tree in self.parser_query.getKBestPCFGParses(kbest):
-            s = PySentence(sp, candidate_tree.object())
+            s = PySentence(self, candidate_tree.object())
             prob = math.e**candidate_tree.score()
             yield s, prob
 
@@ -375,7 +375,7 @@ def get_dependencies_example(sp):
     
 def get_common_path_example(sp):
     print 'Common path:'
-    text = 'The quick brown fox jumped over the lazy dog.'
+    text = 'The quick brown fox jumped over a lazy dog.'
     print 'Text:', text
     i = 4
     j = 9

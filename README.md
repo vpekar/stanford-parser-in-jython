@@ -26,11 +26,11 @@ USAGE:
 
     To keep XML tags provided in the input text:
     
-        sentence = parser.parse('This is a <tag>test</tag>')
-    
+        sentence = parser.parse_xml('This is a <b>test</b>.')
+
     To strip all XML before parsing:
     
-        sentence = parser.parse_xml('This is a <b>test</b>.')
+        sentence = parser.parse('This is a <tag>test</tag>')
     
     To print the sentence as a table (one word per line):
     
