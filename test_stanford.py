@@ -1,8 +1,4 @@
 """To run the tests, put englishPCFG.ser.gz into the working directory.
-
-Created on 4 Nov 2012
-
-@author: viktor
 """
 
 import unittest
