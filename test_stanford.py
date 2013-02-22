@@ -15,8 +15,8 @@ class TestPySentence(unittest.TestCase):
         input = "The quick brown fox jumped over a lazy dog."
         sp = StanfordParser('englishPCFG.ser.gz')
         self.sentence = sp.parse_xml(input)
-        
-    def test_get_least_common_node(self):        
+
+    def test_get_least_common_node(self):
         lcn, shortest_path = self.sentence.get_least_common_node(4, 9)
         actual_lcn = self.sentence.word[lcn]
         actual_path = ' '.join([self.sentence.word[x] for x in sorted(shortest_path)])
@@ -26,7 +26,7 @@ class TestPySentence(unittest.TestCase):
         self.assertTrue(expected_lcn == actual_lcn, msg)
         msg = "Expected %s != actual %s" % (expected_path, actual_path)
         self.assertTrue(expected_path == actual_path, msg)
-        
+
 
 class TestStanfordParser(unittest.TestCase):
 
@@ -50,7 +50,7 @@ class TestStanfordParser(unittest.TestCase):
         actual = len(parses)
         msg = "Expected %d != actual %d" % (expected, actual)
         self.assertTrue(expected == actual, msg)
-        
+
     def test_parse_xml(self):
         input = 'This <a>is</a> a test<!-- b -->.'
         expected = ['DT', 'VBZ', 'DT', 'NN', '.']
@@ -58,7 +58,7 @@ class TestStanfordParser(unittest.TestCase):
         actual = [v for k, v in sorted(sentence.tag.items())]
         msg = "Expected %s != actual %s" % (expected, actual)
         self.assertTrue(expected == actual, msg)
-        
+
     def test_tokenise(self):
         input = 'This is a test.'
         expected = ['This', 'is', 'a', 'test', '.']
