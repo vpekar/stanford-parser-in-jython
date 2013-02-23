@@ -118,11 +118,11 @@ class PySentence:
         return lemma.decode('latin1')
 
     def get_pos_tag(self, node):
-        parent = node_i.parent()
+        parent = node.parent()
         tag = 'Z' if parent == None else parent.value()
         return tag.decode('latin1')
 
-    def get_dependency_data(self, node_i, idx):
+    def get_dependency_data(self, word, node_i, idx):
         parent = self.gs.getGovernor(node_i)
         if word in string.punctuation or parent == None:
             parent_idx = 0
@@ -157,7 +157,7 @@ class PySentence:
             idx = node_i.index()
             word = self.get_word(node_i)
             tag = self.get_pos_tag(node_i)
-            p_idx, rel = self.get_dependency_data(node_i, idx)
+            p_idx, rel = self.get_dependency_data(word, node_i, idx)
 
             self.node[idx] = node_i
             self.word[idx] = word
@@ -367,8 +367,10 @@ class StanfordParser:
         # build a plain-text token list and remember tag positions
         xml_tags = {}
         sent = []
+        
         for token in self.tokenize(text):
-            token = unicode(token)
+            token = unicode(token).replace(u'\xa0', ' ')
+            
             if token.startswith('<'):
                 cur_size = len(sent)
                 xml_tags[cur_size] = xml_tags.get(cur_size, [])
