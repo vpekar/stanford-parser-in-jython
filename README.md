@@ -1,7 +1,7 @@
 stanford-parser-in-jython
 =========================
 
-A Jython interface to the Stanford parser (v.2.0.3). Includes various utilities to manipulate parsed sentences: 
+A Jython interface to the Stanford parser (v.3.3.1). Includes various utilities to manipulate parsed sentences: 
 * parse text containing XML tags, 
 * obtain probabilities for different analyses,
 * extract dependency relations,
