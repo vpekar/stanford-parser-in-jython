@@ -1,4 +1,4 @@
-"""A Jython interface to the Stanford parser (v.2.0.3). Includes various
+"""A Jython interface to the Stanford parser (v.3.3.1). Includes various
 utilities to manipulate parsed sentences:
 * parse text containing XML tags,
 * obtain probabilities for different analyses,
@@ -351,7 +351,8 @@ class StanfordParser:
         @return: a Sentence object
         """
         sentence = self.TAG.sub('', sentence)
-        parse = self.lp.apply(sentence)
+        tokens = [unicode(x) for x in self.tokenize(sentence)]
+        parse = self.lp.apply(Sentence.toWordList(tokens))
         return PySentence(self, parse)
 
     def tokenize(self, text):
