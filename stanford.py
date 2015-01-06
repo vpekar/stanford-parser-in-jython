@@ -160,6 +160,8 @@ class PySentence:
 
             idx = node_i.index()
             word = self.get_word(node_i)
+            if word == "ROOT":
+                break
             tag = self.get_pos_tag(node_i)
 
             self.node[idx] = node_i
