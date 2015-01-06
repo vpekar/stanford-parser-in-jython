@@ -1,4 +1,4 @@
-"""A Jython interface to the Stanford parser (v.3.3.1). Includes various
+"""A Jython interface to the Stanford parser (v.3.5.0). Includes various
 utilities to manipulate parsed sentences:
 * parse text containing XML tags,
 * obtain probabilities for different analyses,
@@ -16,7 +16,7 @@ INSTALLATION:
     2. Unpack into a local dir, put the path to stanford-parser.jar into the
     classpath for jython
     3. Put the full path to englishPCFG.ser.gz as parser_file arg to
-    StanfordParser
+    StanfordParser (searched in the local directory by default)
 
 USAGE:
 
@@ -46,10 +46,14 @@ On output, the script produces unicode.
 """
 
 __author__ = "Viktor Pekar <v.pekar@gmail.com>"
-__version__ = "0.1"
+__version__ = "0.2"
 
 
-import sys, re, os, string, math
+import sys
+import re
+import os
+import string
+import math
 
 try:
     assert 'java' in sys.platform
@@ -98,10 +102,8 @@ class PySentence:
         @param xmltags: index of the previous text token =>
             list of intervening xmltags
         """
-        self.parse = parse
         self.gs = parser.gsf.newGrammaticalStructure(parse)
-        self.lemmer = parser.lemmer
-        self.xmltags = xmltags
+        self.parse = parse
 
         self.node = {}
         self.word = {}
@@ -110,6 +112,9 @@ class PySentence:
         self.dep = {}
         self.rel = {}
         self.children = {}
+
+        self.lemmer = parser.lemmer
+        self.xmltags = xmltags
 
         self.populate_indices()
 
@@ -121,16 +126,6 @@ class PySentence:
         parent = node.parent()
         tag = 'Z' if parent == None else parent.value()
         return tag.decode('latin1')
-
-    def get_dependency_data(self, word, node_i, idx):
-        parent = self.gs.getGovernor(node_i)
-        if word in string.punctuation or parent == None:
-            parent_idx = 0
-            rel = 'punct'
-        else:
-            parent_idx = parent.index()
-            rel = str(self.gs.getGrammaticalRelation(parent_idx, idx))
-        return parent_idx, rel
 
     def get_word(self, node_i):
         word = node_i.value().decode('latin1')
@@ -148,8 +143,17 @@ class PySentence:
         # insert the tags before the text, if any are present before the text
         self.add_xml_tags_to_word_index(idx=0)
 
-        # iterate over text tokens
-        for node_i in self.gs.getNodes():
+        # dependency indices
+        for td in self.gs.typedDependenciesCCprocessed(True):
+            dep_idx = td.dep().index()
+            p_idx = td.gov().index()
+            self.rel[dep_idx] = td.reln().getShortName()
+            self.dep[dep_idx] = p_idx
+            self.children[p_idx] = self.children.get(p_idx, [])
+            self.children[p_idx].append(dep_idx)
+
+        # word, pos tag and lemma indices
+        for node_i in self.gs.root():
 
             if node_i.headTagNode() != None:
                 continue
@@ -157,16 +161,16 @@ class PySentence:
             idx = node_i.index()
             word = self.get_word(node_i)
             tag = self.get_pos_tag(node_i)
-            p_idx, rel = self.get_dependency_data(word, node_i, idx)
 
             self.node[idx] = node_i
             self.word[idx] = word
             self.tag[idx] = tag
             self.lemma[idx] = self.get_lemma(word, tag)
-            self.rel[idx] = rel
-            self.dep[idx] = p_idx
-            self.children[p_idx] = self.children.get(p_idx, [])
-            self.children[p_idx].append(idx)
+
+            # if the word is unattached
+            if word in string.punctuation or not self.dep.get(idx):
+                self.dep[idx] = 0
+                self.rel[idx] = 'punct'
 
             # insert xml tags, if any
             self.add_xml_tags_to_word_index(idx)
@@ -368,10 +372,10 @@ class StanfordParser:
         # build a plain-text token list and remember tag positions
         xml_tags = {}
         sent = []
-        
+
         for token in self.tokenize(text):
             token = unicode(token).replace(u'\xa0', ' ')
-            
+
             if token.startswith('<'):
                 cur_size = len(sent)
                 xml_tags[cur_size] = xml_tags.get(cur_size, [])

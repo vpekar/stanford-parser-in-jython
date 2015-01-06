@@ -19,7 +19,7 @@ class TestPySentence(unittest.TestCase):
         actual_lcn = self.sentence.word[lcn]
         actual_path = ' '.join([self.sentence.word[x] for x in sorted(shortest_path)])
         expected_lcn = 'jumped'
-        expected_path = 'fox jumped over dog'
+        expected_path = 'fox jumped dog'
         msg = "Expected %s != actual %s" % (expected_lcn, actual_lcn)
         self.assertTrue(expected_lcn == actual_lcn, msg)
         msg = "Expected %s != actual %s" % (expected_path, actual_path)
